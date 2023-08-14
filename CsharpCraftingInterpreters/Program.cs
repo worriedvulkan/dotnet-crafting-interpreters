@@ -1,12 +1,10 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-using CsharpCraftingInterpreters;
-
-namespace CsharpCraftingInterpreters;
+﻿namespace CsharpCraftingInterpreters;
 
 public static class Program
 {
     public static bool HadError = false;
+    public static bool HadRuntimeError = false;
+    private static Interpreter _interpreter = new Interpreter();
 
     public static void Main(string[] args)
     {
@@ -30,6 +28,7 @@ public static class Program
         var str = File.ReadAllText(path);
         Run(str);
         if (HadError) Environment.Exit(65);
+        if (HadRuntimeError) Environment.Exit(70);
     }
 
     public static void RunPrompt()
@@ -49,10 +48,14 @@ public static class Program
     {
         var scanner = new Scanner(source);
         var tokens = scanner.ScanTokens();
-
+        var parser = new Parser(tokens);
+        var expressions = parser.Parse();
+        if (HadError) return;
+        
+        _interpreter.Interpret(expressions);
         foreach (var token in tokens)
         {
-            Console.WriteLine(token);
+            Console.WriteLine(tokens);
         }
     }
 
@@ -61,9 +64,24 @@ public static class Program
         Report(line, "", message);
     }
 
+    public static void Error(Token token, string message)
+    {
+        if (token.TokenType == TokenType.Eof)
+        {
+            Report(token.Line, " at end", message);
+        }
+        Report(token.Line, " at '" + token.Lexeme + "'", message);
+    }
+
     public static void Report(int line, string where, string message)
     {
         Console.Error.WriteLine($"[line {line}] Error {where}: {message}");
         HadError = true;
+    }
+
+    public static void RuntimeError(RuntimeError err)
+    {
+        Console.Error.WriteLine(err.Message + "\n[line " + err.Token.Line + "]");
+        HadRuntimeError = true;
     }
 }

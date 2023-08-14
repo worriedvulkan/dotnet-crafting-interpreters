@@ -2,22 +2,22 @@ namespace CsharpCraftingInterpreters;
 
 public class Token
 {
-    private TokenType _tokenType;
-    private string _lexeme;
-    private object _literal;
-    private int _line;
+    public TokenType TokenType;
+    public string Lexeme;
+    public object Literal;
+    public int Line;
 
     public Token(TokenType tokenType, string lexeme, object literal, int line)
     {
-        _line = line;
-        _literal = literal;
-        _lexeme = lexeme;
-        _tokenType = tokenType;
+        Line = line;
+        Literal = literal;
+        Lexeme = lexeme;
+        TokenType = tokenType;
     }
 
     public override string ToString()
     {
-        return $"{_tokenType} {_lexeme} {_literal}";
+        return $"{TokenType} {Lexeme} {Literal}";
     }
 }
 
