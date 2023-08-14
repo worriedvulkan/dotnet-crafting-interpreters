@@ -18,6 +18,11 @@ public class AstPrinter : Expr.IVisitor<string>
         );
     }
 
+    public string VisitAssignExpr(Expr.Assign expr)
+    {
+        throw new NotImplementedException();
+    }
+
     public string VisitBinaryExpr(Expr.Binary expr)
     {
         return Parenthesize(expr.Token.Lexeme, expr.Left, expr.Right);
@@ -32,7 +37,12 @@ public class AstPrinter : Expr.IVisitor<string>
     {
         return expr.Value == null ? "nil" : expr.Value.ToString();
     }
-    
+
+    public string VisitVariableExpr(Expr.Variable expr)
+    {
+        throw new NotImplementedException();
+    }
+
     public string VisitUnaryExpr(Expr.Unary expr)
     {
         return Parenthesize(expr.Operator.Lexeme, expr.Right);

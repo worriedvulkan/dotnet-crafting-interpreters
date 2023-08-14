@@ -49,10 +49,10 @@ public static class Program
         var scanner = new Scanner(source);
         var tokens = scanner.ScanTokens();
         var parser = new Parser(tokens);
-        var expressions = parser.Parse();
+        var statements = parser.Parse();
         if (HadError) return;
         
-        _interpreter.Interpret(expressions);
+        _interpreter.Interpret(statements);
         foreach (var token in tokens)
         {
             Console.WriteLine(tokens);

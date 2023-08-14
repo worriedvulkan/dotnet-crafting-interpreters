@@ -1,13 +1,20 @@
-using System.IO.Compression;
-
 namespace CsharpCraftingInterpreters;
 
-public class Interpreter : Expr.IVisitor<Object>
+public class Interpreter : Expr.IVisitor<object?>, Stmt.IVisitor<object?>
 {
-    public object VisitBinaryExpr(Expr.Binary expr)
+    private Env _env = new();
+
+    public object? VisitAssignExpr(Expr.Assign expr)
     {
-        var left = Evalute(expr.Left);
-        var right = Evalute(expr.Right);
+        var value = Evaluate(expr.Value);
+        _env.Assign(expr.Name, value);
+        return value;
+    }
+    
+    public object? VisitBinaryExpr(Expr.Binary expr)
+    {
+        var left = Evaluate(expr.Left);
+        var right = Evaluate(expr.Right);
 
         switch (expr.Token.TokenType)
         {
@@ -48,42 +55,12 @@ public class Interpreter : Expr.IVisitor<Object>
 
     public object VisitGroupingExpr(Expr.Grouping expr)
     {
-        return Evalute(expr.Expression);
+        return Evaluate(expr.Expression);
     }
 
-    public void Interpret(Expr expression)
+    public object? VisitUnaryExpr(Expr.Unary expr)
     {
-        try
-        {
-            var value = Evalute(expression);
-            Console.WriteLine(Stringify(value));
-        }
-        catch (RuntimeError err)
-        {
-            Program.RuntimeError(err);
-        }
-    }
-
-    private string Stringify(object? obj)
-    {
-        if (obj is null) return "nil";
-        if (obj is double)
-        {
-            var text = obj.ToString();
-            if (text.EndsWith(".0"))
-            {
-                text = text.Substring(0, text.Length - 2);
-            }
-
-            return text;
-        }
-
-        return obj.ToString();
-    }
-    
-    public object VisitUnaryExpr(Expr.Unary expr)
-    {
-        var right = Evalute(expr.Right);
+        var right = Evaluate(expr.Right);
         switch (expr.Operator.TokenType) 
         {
             case TokenType.Bang: return IsTruthy(right) == false;
@@ -92,6 +69,53 @@ public class Interpreter : Expr.IVisitor<Object>
                 return -(double)right;
             default: return null;
         }
+    }
+    
+    public object VisitLiteralExpr(Expr.Literal expr)
+    {
+        return expr.Value;
+    }
+
+    public object VisitVariableExpr(Expr.Variable expr)
+    {
+        return _env.Get(expr.Name);
+    }
+    
+    public void Interpret(List<Stmt> statements)
+    {
+        try
+        {
+            foreach (var stmt in statements)
+            {
+                Execute(stmt);
+            }
+        }
+        catch (RuntimeError err)
+        {
+            Program.RuntimeError(err);
+        }
+    }
+
+    private void Execute(Stmt stmt)
+    {
+        stmt.Accept(this);
+    }
+
+    private string Stringify(object? obj)
+    {
+        if (obj is null) return "nil";
+        var text = obj.ToString()!;
+        if (obj is double)
+        {
+            if (text.EndsWith(".0"))
+            {
+                text = text.Substring(0, text.Length - 2);
+            }
+
+            return text;
+        }
+
+        return text;
     }
 
     private void CheckNumberOperand(Token token, object operand)
@@ -106,12 +130,7 @@ public class Interpreter : Expr.IVisitor<Object>
         throw new RuntimeError(token, "Operands must be two numbers or two strings");
     }
 
-    public object VisitLiteralExpr(Expr.Literal expr)
-    {
-        return expr.Value;
-    }
-
-    private object Evalute(Expr expr)
+    private object Evaluate(Expr expr)
     {
         return expr.Accept(this);
     }
@@ -134,6 +153,50 @@ public class Interpreter : Expr.IVisitor<Object>
             bool b => b,
             _ => true
         };
+    }
+
+    public object? VisitExpressionStmt(Stmt.Expression expr)
+    {
+        Evaluate(expr.Expr);
+        return null;
+    }
+
+    public object? VisitPrintStmt(Stmt.Print stmt)
+    {
+        var value = Evaluate(stmt.Expr);
+        Console.WriteLine(Stringify(value));
+        return null;
+    }
+
+    public object? VisitVarStmt(Stmt.Var stmt)
+    {
+        object? value = null;
+        value = Evaluate(stmt.Initializer);
+        _env.Define(stmt.Name.Lexeme, value);
+        return null;
+    }
+
+    public object? VisitBlockStmt(Stmt.Block stmt)
+    {
+        ExecuteBlock(stmt.Statements, new Env(_env));
+        return null;
+    }
+
+    public void ExecuteBlock(List<Stmt> statements, Env env)
+    {
+        var previous = this._env;
+        try
+        {
+            _env = env;
+            foreach (var stmt in statements)
+            {
+                Execute(stmt);
+            }
+        }
+        finally
+        {
+            _env = previous;
+        }
     }
 }
 
